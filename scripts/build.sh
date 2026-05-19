@@ -10,6 +10,7 @@ TEAM_ID="${TEAM_ID:-AW7ZNT442J}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-Developer ID Application: Hannes Schneidermayer (AW7ZNT442J)}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-emoji-picker-macos-notary}"
 BUILD_ARCHS="${BUILD_ARCHS:-}"
+BASE_VERSION="${BASE_VERSION:-1.0}"
 
 usage() {
   cat <<EOF
@@ -22,6 +23,7 @@ Build types:
 
 Environment:
   VERSION             CFBundleShortVersionString (default: git-derived version)
+  BASE_VERSION        Version used when no v* git tag exists (default: 1.0)
   BUILD_NUMBER        CFBundleVersion (default: timestamp)
   BUNDLE_ID           App bundle id (default: com.inndevs.trimmeur)
   TEAM_ID             Apple team id for notarization
@@ -40,41 +42,52 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
 }
 
-derive_version() {
-  local fallback_version="0.1.0"
-  local describe_output=""
-
+latest_version_tag() {
   if ! command -v git >/dev/null 2>&1; then
-    echo "${fallback_version}"
     return
   fi
 
   if ! git -C "${ROOT_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "${fallback_version}"
     return
   fi
 
-  describe_output="$(git -C "${ROOT_DIR}" describe --tags --long --dirty --match 'v*' 2>/dev/null || true)"
-  if [[ "${describe_output}" =~ ^v(.+)-([0-9]+)-g[0-9a-f]+(-dirty)?$ ]]; then
-    local tag_version="${BASH_REMATCH[1]}"
-    local commit_count="${BASH_REMATCH[2]}"
-    local dirty_suffix="${BASH_REMATCH[3]}"
+  git -C "${ROOT_DIR}" tag --list 'v*' --sort=-v:refname | head -n 1
+}
 
-    if [[ "${commit_count}" == "0" ]]; then
-      echo "${tag_version}${dirty_suffix}"
-    else
-      echo "${tag_version}-${commit_count}${dirty_suffix}"
-    fi
-    return
+git_dirty_suffix() {
+  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain 2>/dev/null)" ]]; then
+    echo "-dirty"
+  fi
+}
+
+derive_base_version() {
+  local tag
+  tag="$(latest_version_tag || true)"
+  if [[ -n "${tag}" ]]; then
+    echo "${tag#v}"
+  else
+    echo "${BASE_VERSION}"
+  fi
+}
+
+derive_debug_version() {
+  local tag base_version commit_count
+  tag="$(latest_version_tag || true)"
+  base_version="$(derive_base_version)"
+
+  if [[ -n "${tag}" ]]; then
+    commit_count="$(git -C "${ROOT_DIR}" rev-list --count "${tag}..HEAD")"
+  elif git -C "${ROOT_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    commit_count="$(git -C "${ROOT_DIR}" rev-list --count HEAD)"
+  else
+    commit_count="0"
   fi
 
-  describe_output="$(git -C "${ROOT_DIR}" describe --tags --always --dirty 2>/dev/null || true)"
-  if [[ -n "${describe_output}" ]]; then
-    echo "${describe_output#v}"
-    return
-  fi
+  echo "${base_version}-${commit_count}$(git_dirty_suffix)"
+}
 
-  echo "${fallback_version}"
+derive_prod_version() {
+  derive_base_version
 }
 
 zip_app() {
@@ -120,7 +133,13 @@ if [[ "${SHOULD_NOTARIZE}" == "1" ]]; then
   require_command spctl
 fi
 
-VERSION="${VERSION:-$(derive_version)}"
+if [[ -z "${VERSION:-}" ]]; then
+  if [[ "${BUILD_TYPE}" == "debug" ]]; then
+    VERSION="$(derive_debug_version)"
+  else
+    VERSION="$(derive_prod_version)"
+  fi
+fi
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M%S)}"
 DIST_DIR="${ROOT_DIR}/dist/${BUILD_TYPE}"
 APP_DIR="${DIST_DIR}/${APP_BUNDLE_NAME}.app"

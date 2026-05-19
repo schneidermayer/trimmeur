@@ -2,6 +2,7 @@ import AppKit
 import TrimmeurCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let appName = "Trimmeur"
     private var statusItem: NSStatusItem?
     private var pasteMenuItems: [NSMenuItem] = []
     private var preferencesWindowController: PreferencesWindowController?
@@ -22,15 +23,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupMainMenu() {
         let mainMenu = NSMenu()
-        let appMenuItem = NSMenuItem(title: "Trimmeur", action: nil, keyEquivalent: "")
+        let appMenuItem = NSMenuItem(title: appName, action: nil, keyEquivalent: "")
         mainMenu.addItem(appMenuItem)
 
-        let appMenu = NSMenu(title: "Trimmeur")
+        let appMenu = NSMenu(title: appName)
         appMenuItem.submenu = appMenu
         appMenu.addItem(makePasteMenuItem())
         appMenu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ","))
         appMenu.addItem(.separator())
-        appMenu.addItem(makeMenuItem(title: "Quit Trimmeur", action: #selector(quit), keyEquivalent: "q"))
+        appMenu.addItem(makeMenuItem(title: quitMenuItemTitle, action: #selector(quit), keyEquivalent: "q"))
         NSApp.mainMenu = mainMenu
     }
 
@@ -40,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = item.button {
             button.image = Self.makeStatusBarIcon()
             button.imagePosition = .imageOnly
-            button.toolTip = "Trimmeur"
+            button.toolTip = appName
         }
 
         let menu = NSMenu()
@@ -49,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(makeMenuItem(title: accessibilityMenuTitle, action: #selector(requestAccessibilityPermission), keyEquivalent: ""))
         menu.addItem(.separator())
-        menu.addItem(makeMenuItem(title: "Quit Trimmeur", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(makeMenuItem(title: quitMenuItemTitle, action: #selector(quit), keyEquivalent: "q"))
 
         item.menu = menu
         statusItem = item
@@ -117,6 +118,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AccessibilityPermission.isTrusted(prompt: false)
             ? "Accessibility Permission Granted"
             : "Request Accessibility Permission..."
+    }
+
+    private var quitMenuItemTitle: String {
+        AppVersion.quitMenuItemTitle(
+            appName: appName,
+            version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        )
     }
 
     @objc private func pasteTrimmed(_ sender: Any?) {

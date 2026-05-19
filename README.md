@@ -31,6 +31,10 @@ open "dist/debug/Trimmeur.app"
 
 The build script always runs the test suite before building.
 
+Debug builds start at `1.0` and always include the number of commits since the latest `v*` tag. For example, 15 commits after `v1.0` builds as `1.0-15`.
+
+The app menu displays the bundle version in the quit item, for example `Quit Trimmeur 1.0` in production and `Quit Trimmeur 1.0-15` in debug builds.
+
 ## Production Build
 
 Production builds use the Release configuration, build universal binaries by default, Developer ID sign the app, notarize it, staple the app, and produce a zip archive.
@@ -41,10 +45,10 @@ One-time notary profile setup:
 xcrun notarytool store-credentials "emoji-picker-macos-notary" --apple-id "birthy@gmx.at" --team-id "AW7ZNT442J"
 ```
 
-Run:
+Run a signed and notarized production build:
 
 ```bash
-VERSION=1.0.0 ./scripts/build.sh prod
+VERSION=1.0 ./scripts/build.sh prod
 ```
 
 Useful overrides:
@@ -60,6 +64,16 @@ Artifacts:
 - Debug app: `dist/debug/Trimmeur.app`
 - Production app: `dist/prod/Trimmeur.app`
 - Production zip: `dist/prod/trimmeur-<version>.zip`
+
+## GitHub Release
+
+Every release must create a matching git tag. Use the release script so the tag, production build, and GitHub release asset stay in sync:
+
+```bash
+scripts/release_github.sh 1.0
+```
+
+The script requires a clean worktree, builds `dist/prod/trimmeur-1.0.zip`, creates and pushes `v1.0`, and uploads the zip to GitHub Releases as the precompiled macOS app.
 
 ## Project Layout
 
