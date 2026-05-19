@@ -45,6 +45,8 @@ One-time notary profile setup:
 xcrun notarytool store-credentials "emoji-picker-macos-notary" --apple-id "birthy@gmx.at" --team-id "AW7ZNT442J"
 ```
 
+Apple Developer Program agreements for the signing team must be current; `scripts/build.sh prod` validates notary access before building.
+
 Run a signed and notarized production build:
 
 ```bash

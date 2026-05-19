@@ -42,6 +42,12 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
 }
 
+validate_notary_access() {
+  xcrun notarytool history \
+    --keychain-profile "${NOTARY_PROFILE}" \
+    --output-format json >/dev/null
+}
+
 latest_version_tag() {
   if ! command -v git >/dev/null 2>&1; then
     return
@@ -131,6 +137,8 @@ require_command ditto
 if [[ "${SHOULD_NOTARIZE}" == "1" ]]; then
   require_command xcrun
   require_command spctl
+  echo "Validating Apple notarization access..."
+  validate_notary_access
 fi
 
 if [[ -z "${VERSION:-}" ]]; then
