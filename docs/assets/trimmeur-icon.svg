@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Trimmeur scissor icon</title>
+  <desc id="desc">A rounded blue app icon with red handled scissors.</desc>
+  <rect width="256" height="256" rx="56" fill="#eef7ff"/>
+  <path d="M88 151 195 62M168 151 61 62" fill="none" stroke="#141922" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="72" cy="178" r="30" fill="none" stroke="#f02d3a" stroke-width="14"/>
+  <circle cx="184" cy="178" r="30" fill="none" stroke="#f02d3a" stroke-width="14"/>
+  <circle cx="128" cy="128" r="11" fill="#141922"/>
+</svg>

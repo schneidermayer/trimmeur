@@ -1,5 +1,6 @@
 import Carbon
 import Foundation
+import TrimmeurCore
 
 final class GlobalHotKey {
     enum RegistrationError: LocalizedError {
@@ -28,7 +29,7 @@ final class GlobalHotKey {
         unregister()
     }
 
-    func register(handler: @escaping Handler) throws {
+    func register(shortcut: KeyboardShortcut, handler: @escaping Handler) throws {
         unregister()
         self.handler = handler
 
@@ -75,8 +76,8 @@ final class GlobalHotKey {
 
         let hotKeyID = EventHotKeyID(signature: signature, id: hotKeyIdentifier)
         let registerStatus = RegisterEventHotKey(
-            UInt32(kVK_ANSI_T),
-            UInt32(cmdKey | optionKey),
+            shortcut.keyCode,
+            shortcut.carbonModifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,

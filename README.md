@@ -1,8 +1,12 @@
-# Trimmeur
+<div align="center">
+  <img src="docs/assets/trimmeur-icon.svg" width="140" height="140" alt="Trimmeur scissor icon" />
+  <h1>Trimmeur</h1>
+  <p>A tiny macOS menu-bar agent for pasting clipboard text without indentation.</p>
+</div>
 
-Trimmeur is a tiny macOS menu-bar agent for pasting clipboard text without indentation.
+The default global shortcut for **Paste Trimmed** is `Option-Command-T`. You can change it in `Preferences...` from the menu-bar icon. The app reads the current text clipboard, removes leading spaces and tabs from every line, temporarily places the trimmed text on the pasteboard, sends `Command-V`, and then restores the original pasteboard contents.
 
-The default global shortcut for **Paste Trimmed** is `Option-Command-T`. The app reads the current text clipboard, removes leading spaces and tabs from every line, temporarily places the trimmed text on the pasteboard, sends `Command-V`, and then restores the original pasteboard contents.
+`Preferences...` also includes a `Start on login` toggle.
 
 ## Permissions
 
