@@ -1,0 +1,6 @@
+.build/
+dist/
+DerivedData/
+.DS_Store
+Sources/TrimmeurMacOS/Resources/AppIcon.iconset/
+Sources/TrimmeurMacOS/Resources/AppIcon.icns
