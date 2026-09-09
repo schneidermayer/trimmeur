@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu(title: appName)
         appMenuItem.submenu = appMenu
         appMenu.addItem(makePasteMenuItem())
+        appMenu.addItem(makePasteWithoutLineBreaksMenuItem())
         appMenu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ","))
         appMenu.addItem(.separator())
         appMenu.addItem(makeMenuItem(title: quitMenuItemTitle, action: #selector(quit), keyEquivalent: "q"))
@@ -46,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(makePasteMenuItem())
+        menu.addItem(makePasteWithoutLineBreaksMenuItem())
         menu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(makeMenuItem(title: accessibilityMenuTitle, action: #selector(requestAccessibilityPermission), keyEquivalent: ""))
@@ -68,6 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.title = shortcut.menuKeyEquivalent.isEmpty ? "Paste Trimmed (\(shortcut.displayString))" : "Paste Trimmed"
         item.keyEquivalent = shortcut.menuKeyEquivalent
         item.keyEquivalentModifierMask = shortcut.cocoaModifierFlags
+    }
+
+    private func makePasteWithoutLineBreaksMenuItem() -> NSMenuItem {
+        makeMenuItem(title: "Paste Without Line Breaks", action: #selector(pasteWithoutLineBreaks), keyEquivalent: "")
     }
 
     private func makeMenuItem(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
@@ -128,13 +134,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func pasteTrimmed(_ sender: Any?) {
+        pasteClipboard(using: pasteService.pasteTrimmedClipboard)
+    }
+
+    @objc private func pasteWithoutLineBreaks(_ sender: Any?) {
+        pasteClipboard(using: pasteService.pasteWithoutLineBreaksClipboard)
+    }
+
+    private func pasteClipboard(using paste: () -> PasteTrimmedService.PasteResult) {
         if !AccessibilityPermission.isTrusted(prompt: false) {
             _ = AccessibilityPermission.isTrusted(prompt: true)
             NSSound.beep()
             return
         }
 
-        switch pasteService.pasteTrimmedClipboard() {
+        switch paste() {
         case .pasted:
             break
         case .clipboardHasNoString:

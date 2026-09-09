@@ -27,6 +27,17 @@ public enum TextTrimmer {
 
         return result
     }
+
+    public static func removingLineBreaks(from text: String) -> String {
+        var result = String()
+        result.reserveCapacity(text.count)
+
+        for scalar in text.unicodeScalars where !CharacterSet.newlines.contains(scalar) {
+            result.unicodeScalars.append(scalar)
+        }
+
+        return result
+    }
 }
 
 private extension Unicode.Scalar {

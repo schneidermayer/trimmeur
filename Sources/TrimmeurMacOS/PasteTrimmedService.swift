@@ -23,24 +23,32 @@ final class PasteTrimmedService {
     }
 
     func pasteTrimmedClipboard() -> PasteResult {
+        pasteClipboard(transform: TextTrimmer.removingIndentation)
+    }
+
+    func pasteWithoutLineBreaksClipboard() -> PasteResult {
+        pasteClipboard(transform: TextTrimmer.removingLineBreaks)
+    }
+
+    private func pasteClipboard(transform: (String) -> String) -> PasteResult {
         guard let clipboardText = pasteboard.string(forType: .string) else {
             return .clipboardHasNoString
         }
 
         let snapshot = PasteboardSnapshot.capture(from: pasteboard)
-        let trimmedText = TextTrimmer.removingIndentation(from: clipboardText)
+        let transformedText = transform(clipboardText)
 
         pasteboard.clearContents()
-        pasteboard.setString(trimmedText, forType: .string)
-        let trimmedChangeCount = pasteboard.changeCount
+        pasteboard.setString(transformedText, forType: .string)
+        let transformedChangeCount = pasteboard.changeCount
 
         guard pasteEventSender.sendPaste() else {
-            restore(snapshot: snapshot, expectedChangeCount: trimmedChangeCount)
+            restore(snapshot: snapshot, expectedChangeCount: transformedChangeCount)
             return .couldNotCreatePasteEvent
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + restoreDelay) { [weak self] in
-            self?.restore(snapshot: snapshot, expectedChangeCount: trimmedChangeCount)
+            self?.restore(snapshot: snapshot, expectedChangeCount: transformedChangeCount)
         }
 
         return .pasted
