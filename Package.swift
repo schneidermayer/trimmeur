@@ -21,5 +21,9 @@ let package = Package(
             name: "TrimmeurCoreTests",
             dependencies: ["TrimmeurCore"]
         ),
+        .testTarget(
+            name: "TrimmeurMacOSTests",
+            dependencies: ["TrimmeurMacOS"]
+        ),
     ]
 )

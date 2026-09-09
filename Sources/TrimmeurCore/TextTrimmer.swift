@@ -20,7 +20,7 @@ public enum TextTrimmer {
 
             result.unicodeScalars.append(scalar)
 
-            if scalar == "\n" || scalar == "\r" {
+            if CharacterSet.newlines.contains(scalar) {
                 isAtLineStart = true
             }
         }
@@ -37,6 +37,10 @@ public enum TextTrimmer {
         }
 
         return result
+    }
+
+    public static func removingIndentationAndLineBreaks(from text: String) -> String {
+        removingLineBreaks(from: removingIndentation(from: text))
     }
 }
 

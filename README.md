@@ -8,13 +8,20 @@ The default global shortcut for **Paste Trimmed** is `Option-Command-T`. You can
 
 Choose **Paste Without Line Breaks** from the menu-bar icon to remove all line breaks, including Windows and Unicode line endings. It joins the lines without inserting spaces, preserves other whitespace, and restores the original clipboard after pasting.
 
+The clipboard actions below the divider update the clipboard directly:
+
+- **Trim Clipboard** removes leading spaces and tabs from every line.
+- **Trim Clipboard and Remove Line Breaks** also joins the trimmed lines without inserting spaces.
+
+Both leave the result on the clipboard as plain text for your next paste. They do not paste into the active app or require Accessibility permission.
+
 `Preferences...` also includes a `Start on login` toggle.
 
 ## Permissions
 
 Trimmeur needs macOS **Accessibility** permission to send the paste keystroke to the currently active app.
 
-On first use, macOS will prompt for the permission. You can also open the prompt from the menu-bar icon: `Request Accessibility Permission...`.
+The first time you use a paste action, macOS will prompt for the permission. You can also open the prompt from the menu-bar icon: `Request Accessibility Permission...`.
 
 ## Development
 

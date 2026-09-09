@@ -8,6 +8,12 @@ final class PasteTrimmedService {
         case couldNotCreatePasteEvent
     }
 
+    enum ClipboardUpdateResult: Equatable {
+        case updated
+        case clipboardHasNoString
+        case couldNotWriteClipboard
+    }
+
     private let pasteboard: NSPasteboard
     private let pasteEventSender: PasteEventSender
     private let restoreDelay: TimeInterval
@@ -28,6 +34,31 @@ final class PasteTrimmedService {
 
     func pasteWithoutLineBreaksClipboard() -> PasteResult {
         pasteClipboard(transform: TextTrimmer.removingLineBreaks)
+    }
+
+    func trimClipboard() -> ClipboardUpdateResult {
+        updateClipboard(transform: TextTrimmer.removingIndentation)
+    }
+
+    func trimClipboardAndRemoveLineBreaks() -> ClipboardUpdateResult {
+        updateClipboard(transform: TextTrimmer.removingIndentationAndLineBreaks)
+    }
+
+    private func updateClipboard(transform: (String) -> String) -> ClipboardUpdateResult {
+        guard let clipboardText = pasteboard.string(forType: .string) else {
+            return .clipboardHasNoString
+        }
+
+        let snapshot = PasteboardSnapshot.capture(from: pasteboard)
+        let transformedText = transform(clipboardText)
+        let clearedChangeCount = pasteboard.clearContents()
+
+        guard pasteboard.setString(transformedText, forType: .string) else {
+            restore(snapshot: snapshot, expectedChangeCount: clearedChangeCount)
+            return .couldNotWriteClipboard
+        }
+
+        return .updated
     }
 
     private func pasteClipboard(transform: (String) -> String) -> PasteResult {

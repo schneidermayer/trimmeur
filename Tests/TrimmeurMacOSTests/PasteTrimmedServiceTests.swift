@@ -1,0 +1,112 @@
+import AppKit
+import XCTest
+@testable import TrimmeurMacOS
+
+final class PasteTrimmedServiceTests: XCTestCase {
+    private var pasteboard: NSPasteboard!
+    private var pasteEventSender: StubPasteEventSender!
+    private var service: PasteTrimmedService!
+
+    override func setUp() {
+        super.setUp()
+        pasteboard = NSPasteboard(name: NSPasteboard.Name("TrimmeurTests.\(UUID().uuidString)"))
+        pasteboard.clearContents()
+        pasteEventSender = StubPasteEventSender()
+        service = PasteTrimmedService(
+            pasteboard: pasteboard,
+            pasteEventSender: pasteEventSender,
+            restoreDelay: 0
+        )
+    }
+
+    override func tearDown() {
+        service = nil
+        pasteEventSender = nil
+        pasteboard.releaseGlobally()
+        pasteboard = nil
+        super.tearDown()
+    }
+
+    func testTrimClipboardKeepsLineBreaksAndWritesPlainTextWithoutPastingOrRestoring() {
+        setTextWithFormatting("  first  \n\tsecond\r\n")
+
+        XCTAssertEqual(service.trimClipboard(), .updated)
+        XCTAssertEqual(pasteboard.string(forType: .string), "first  \nsecond\r\n")
+        XCTAssertNil(pasteboard.data(forType: .rtf))
+        XCTAssertEqual(pasteEventSender.sendCount, 0)
+
+        waitForPendingMainQueueWork()
+        XCTAssertEqual(pasteboard.string(forType: .string), "first  \nsecond\r\n")
+    }
+
+    func testTrimClipboardAndRemoveLineBreaksWritesPlainTextWithoutPastingOrRestoring() {
+        setTextWithFormatting("  first \n\tsecond\r\n  third\u{2028}")
+
+        XCTAssertEqual(service.trimClipboardAndRemoveLineBreaks(), .updated)
+        XCTAssertEqual(pasteboard.string(forType: .string), "first secondthird")
+        XCTAssertNil(pasteboard.data(forType: .rtf))
+        XCTAssertEqual(pasteEventSender.sendCount, 0)
+
+        waitForPendingMainQueueWork()
+        XCTAssertEqual(pasteboard.string(forType: .string), "first secondthird")
+    }
+
+    func testClipboardActionsPreserveNonTextClipboardContents() {
+        let originalData = Data([0x01, 0x02, 0x03])
+        XCTAssertTrue(pasteboard.setData(originalData, forType: .png))
+        let originalChangeCount = pasteboard.changeCount
+
+        XCTAssertEqual(service.trimClipboard(), .clipboardHasNoString)
+        XCTAssertEqual(service.trimClipboardAndRemoveLineBreaks(), .clipboardHasNoString)
+
+        XCTAssertEqual(pasteboard.data(forType: .png), originalData)
+        XCTAssertEqual(pasteboard.changeCount, originalChangeCount)
+        XCTAssertEqual(pasteEventSender.sendCount, 0)
+    }
+
+    func testPendingPasteRestorationDoesNotUndoTrimClipboard() {
+        XCTAssertTrue(pasteboard.setString("  first\n  second", forType: .string))
+        XCTAssertEqual(service.pasteTrimmedClipboard(), .pasted)
+
+        XCTAssertEqual(service.trimClipboard(), .updated)
+        waitForPendingMainQueueWork()
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "first\nsecond")
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+    }
+
+    func testPendingPasteRestorationDoesNotUndoTrimClipboardAndRemoveLineBreaks() {
+        XCTAssertTrue(pasteboard.setString("  first\n  second", forType: .string))
+        XCTAssertEqual(service.pasteTrimmedClipboard(), .pasted)
+
+        XCTAssertEqual(service.trimClipboardAndRemoveLineBreaks(), .updated)
+        waitForPendingMainQueueWork()
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "firstsecond")
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+    }
+
+    private func setTextWithFormatting(_ text: String) {
+        let item = NSPasteboardItem()
+        XCTAssertTrue(item.setString(text, forType: .string))
+        XCTAssertTrue(item.setData(Data("{\\rtf1 formatted text}".utf8), forType: .rtf))
+        XCTAssertTrue(pasteboard.writeObjects([item]))
+    }
+
+    private func waitForPendingMainQueueWork() {
+        let completed = expectation(description: "Pending clipboard restoration has run")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            completed.fulfill()
+        }
+        wait(for: [completed], timeout: 1)
+    }
+}
+
+private final class StubPasteEventSender: PasteEventSender {
+    private(set) var sendCount = 0
+
+    func sendPaste() -> Bool {
+        sendCount += 1
+        return true
+    }
+}

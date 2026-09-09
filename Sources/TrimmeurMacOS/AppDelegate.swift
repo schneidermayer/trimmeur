@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenuItem.submenu = appMenu
         appMenu.addItem(makePasteMenuItem())
         appMenu.addItem(makePasteWithoutLineBreaksMenuItem())
+        addClipboardMenuItems(to: appMenu)
         appMenu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ","))
         appMenu.addItem(.separator())
         appMenu.addItem(makeMenuItem(title: quitMenuItemTitle, action: #selector(quit), keyEquivalent: "q"))
@@ -48,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(makePasteMenuItem())
         menu.addItem(makePasteWithoutLineBreaksMenuItem())
+        addClipboardMenuItems(to: menu)
         menu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(makeMenuItem(title: accessibilityMenuTitle, action: #selector(requestAccessibilityPermission), keyEquivalent: ""))
@@ -74,6 +76,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makePasteWithoutLineBreaksMenuItem() -> NSMenuItem {
         makeMenuItem(title: "Paste Without Line Breaks", action: #selector(pasteWithoutLineBreaks), keyEquivalent: "")
+    }
+
+    private func addClipboardMenuItems(to menu: NSMenu) {
+        menu.addItem(.separator())
+        menu.addItem(makeMenuItem(title: "Trim Clipboard", action: #selector(trimClipboard), keyEquivalent: ""))
+        menu.addItem(makeMenuItem(title: "Trim Clipboard and Remove Line Breaks", action: #selector(trimClipboardAndRemoveLineBreaks), keyEquivalent: ""))
+        menu.addItem(.separator())
     }
 
     private func makeMenuItem(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
@@ -154,6 +163,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .clipboardHasNoString:
             NSSound.beep()
         case .couldNotCreatePasteEvent:
+            NSSound.beep()
+        }
+    }
+
+    @objc private func trimClipboard(_ sender: Any?) {
+        updateClipboard(using: pasteService.trimClipboard)
+    }
+
+    @objc private func trimClipboardAndRemoveLineBreaks(_ sender: Any?) {
+        updateClipboard(using: pasteService.trimClipboardAndRemoveLineBreaks)
+    }
+
+    private func updateClipboard(using update: () -> PasteTrimmedService.ClipboardUpdateResult) {
+        switch update() {
+        case .updated:
+            break
+        case .clipboardHasNoString, .couldNotWriteClipboard:
             NSSound.beep()
         }
     }
