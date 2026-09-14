@@ -34,56 +34,65 @@ final class TrimmeurPreferencesTests: XCTestCase {
         XCTAssertEqual(TrimmeurPreferences(userDefaults: userDefaults).pasteTrimmedShortcut, shortcut)
     }
 
-    func testTrimClipboardAndRemoveLineBreaksShortcutDefaultsToShiftOptionCommandT() {
+    func testPasteWithoutLineBreaksShortcutDefaultsToShiftOptionCommandT() {
         let preferences = TrimmeurPreferences(userDefaults: userDefaults)
 
-        XCTAssertEqual(preferences.trimClipboardAndRemoveLineBreaksShortcut, .defaultTrimClipboardAndRemoveLineBreaks)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
     }
 
-    func testTrimClipboardAndRemoveLineBreaksShortcutPersistsIndependently() {
+    func testPasteWithoutLineBreaksShortcutPersistsIndependently() {
         let preferences = TrimmeurPreferences(userDefaults: userDefaults)
         let pasteShortcut = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
-        let trimShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
+        let pasteWithoutLineBreaksShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
 
         preferences.pasteTrimmedShortcut = pasteShortcut
-        preferences.trimClipboardAndRemoveLineBreaksShortcut = trimShortcut
+        preferences.pasteWithoutLineBreaksShortcut = pasteWithoutLineBreaksShortcut
 
         let reloadedPreferences = TrimmeurPreferences(userDefaults: userDefaults)
         XCTAssertEqual(reloadedPreferences.pasteTrimmedShortcut, pasteShortcut)
-        XCTAssertEqual(reloadedPreferences.trimClipboardAndRemoveLineBreaksShortcut, trimShortcut)
+        XCTAssertEqual(reloadedPreferences.pasteWithoutLineBreaksShortcut, pasteWithoutLineBreaksShortcut)
     }
 
-    func testResetPasteShortcutPreservesTrimClipboardAndRemoveLineBreaksShortcut() {
+    func testResetPasteShortcutPreservesPasteWithoutLineBreaksShortcut() {
         let preferences = TrimmeurPreferences(userDefaults: userDefaults)
-        let trimShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
+        let pasteWithoutLineBreaksShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
         preferences.pasteTrimmedShortcut = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
-        preferences.trimClipboardAndRemoveLineBreaksShortcut = trimShortcut
+        preferences.pasteWithoutLineBreaksShortcut = pasteWithoutLineBreaksShortcut
 
         preferences.resetShortcut()
 
         let reloadedPreferences = TrimmeurPreferences(userDefaults: userDefaults)
         XCTAssertEqual(reloadedPreferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
-        XCTAssertEqual(reloadedPreferences.trimClipboardAndRemoveLineBreaksShortcut, trimShortcut)
+        XCTAssertEqual(reloadedPreferences.pasteWithoutLineBreaksShortcut, pasteWithoutLineBreaksShortcut)
     }
 
-    func testResetTrimClipboardAndRemoveLineBreaksShortcutPreservesPasteShortcut() {
+    func testResetPasteWithoutLineBreaksShortcutPreservesPasteShortcut() {
         let preferences = TrimmeurPreferences(userDefaults: userDefaults)
         let pasteShortcut = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
         preferences.pasteTrimmedShortcut = pasteShortcut
-        preferences.trimClipboardAndRemoveLineBreaksShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
+        preferences.pasteWithoutLineBreaksShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
 
-        preferences.resetTrimClipboardAndRemoveLineBreaksShortcut()
+        preferences.resetPasteWithoutLineBreaksShortcut()
 
         let reloadedPreferences = TrimmeurPreferences(userDefaults: userDefaults)
         XCTAssertEqual(reloadedPreferences.pasteTrimmedShortcut, pasteShortcut)
-        XCTAssertEqual(reloadedPreferences.trimClipboardAndRemoveLineBreaksShortcut, .defaultTrimClipboardAndRemoveLineBreaks)
+        XCTAssertEqual(reloadedPreferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
     }
 
-    func testMalformedSavedTrimClipboardAndRemoveLineBreaksShortcutFallsBackToDefault() {
-        userDefaults.set(Data("invalid shortcut".utf8), forKey: "trimClipboardAndRemoveLineBreaksShortcut")
+    func testMalformedSavedPasteWithoutLineBreaksShortcutFallsBackToDefault() {
+        userDefaults.set(Data("invalid shortcut".utf8), forKey: "pasteWithoutLineBreaksShortcut")
         let preferences = TrimmeurPreferences(userDefaults: userDefaults)
 
-        XCTAssertEqual(preferences.trimClipboardAndRemoveLineBreaksShortcut, .defaultTrimClipboardAndRemoveLineBreaks)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+    }
+
+    func testObsoleteTrimClipboardShortcutDoesNotConfigurePasteWithoutLineBreaks() throws {
+        let obsoleteShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.shift, .control])
+        let savedShortcut = try JSONEncoder().encode(obsoleteShortcut)
+        userDefaults.set(savedShortcut, forKey: "trimClipboardAndRemoveLineBreaksShortcut")
+        let preferences = TrimmeurPreferences(userDefaults: userDefaults)
+
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
     }
 
     func testStartOnLoginPersists() {

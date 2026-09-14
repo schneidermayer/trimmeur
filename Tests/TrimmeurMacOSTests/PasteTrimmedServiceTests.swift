@@ -27,6 +27,46 @@ final class PasteTrimmedServiceTests: XCTestCase {
         super.tearDown()
     }
 
+    func testPasteWithoutLineBreaksPreservesOtherWhitespaceAndRestoresOriginalFormatting() {
+        let original = " \tfirst  \n\tsecond\r\n  third\rfourth\u{000B}\tfifth\u{000C} sixth\u{0085}\u{00A0}seventh\u{2028} eighth\u{2029}  "
+        let expectedPaste = " \tfirst  \tsecond  thirdfourth\tfifth sixth\u{00A0}seventh eighth  "
+        setTextWithFormatting(original)
+        let originalFormatting = pasteboard.data(forType: .rtf)
+        let pasteboard = self.pasteboard!
+        pasteEventSender.onSendPaste = {
+            XCTAssertEqual(pasteboard.string(forType: .string), expectedPaste)
+            XCTAssertNil(pasteboard.data(forType: .rtf))
+        }
+
+        XCTAssertEqual(service.pasteWithoutLineBreaksClipboard(), .pasted)
+        XCTAssertEqual(pasteboard.string(forType: .string), expectedPaste)
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+
+        waitForPendingMainQueueWork()
+
+        XCTAssertEqual(pasteboard.string(forType: .string), original)
+        XCTAssertEqual(pasteboard.data(forType: .rtf), originalFormatting)
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+    }
+
+    func testPendingPasteWithoutLineBreaksRestorationPreservesNewerClipboardContents() {
+        setTextWithFormatting("  original\n\ttext")
+        XCTAssertEqual(service.pasteWithoutLineBreaksClipboard(), .pasted)
+
+        pasteboard.clearContents()
+        let newerText = "  newer copy\n\twith line breaks"
+        setTextWithFormatting(newerText)
+        let newerFormatting = pasteboard.data(forType: .rtf)
+        let newerChangeCount = pasteboard.changeCount
+
+        waitForPendingMainQueueWork()
+
+        XCTAssertEqual(pasteboard.string(forType: .string), newerText)
+        XCTAssertEqual(pasteboard.data(forType: .rtf), newerFormatting)
+        XCTAssertEqual(pasteboard.changeCount, newerChangeCount)
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+    }
+
     func testTrimClipboardKeepsLineBreaksAndWritesPlainTextWithoutPastingOrRestoring() {
         setTextWithFormatting("  first  \n\tsecond\r\n")
 
@@ -104,9 +144,11 @@ final class PasteTrimmedServiceTests: XCTestCase {
 
 private final class StubPasteEventSender: PasteEventSender {
     private(set) var sendCount = 0
+    var onSendPaste: (() -> Void)?
 
     func sendPaste() -> Bool {
         sendCount += 1
+        onSendPaste?()
         return true
     }
 }

@@ -3,7 +3,7 @@ import Foundation
 public final class TrimmeurPreferences {
     private enum Key {
         static let pasteTrimmedShortcut = "pasteTrimmedShortcut"
-        static let trimClipboardAndRemoveLineBreaksShortcut = "trimClipboardAndRemoveLineBreaksShortcut"
+        static let pasteWithoutLineBreaksShortcut = "pasteWithoutLineBreaksShortcut"
         static let startOnLogin = "startOnLogin"
     }
 
@@ -31,18 +31,18 @@ public final class TrimmeurPreferences {
         }
     }
 
-    public var trimClipboardAndRemoveLineBreaksShortcut: KeyboardShortcut {
+    public var pasteWithoutLineBreaksShortcut: KeyboardShortcut {
         get {
-            guard let data = userDefaults.data(forKey: Key.trimClipboardAndRemoveLineBreaksShortcut),
+            guard let data = userDefaults.data(forKey: Key.pasteWithoutLineBreaksShortcut),
                   let shortcut = try? decoder.decode(KeyboardShortcut.self, from: data) else {
-                return .defaultTrimClipboardAndRemoveLineBreaks
+                return .defaultPasteWithoutLineBreaks
             }
 
             return shortcut
         }
         set {
             if let data = try? encoder.encode(newValue) {
-                userDefaults.set(data, forKey: Key.trimClipboardAndRemoveLineBreaksShortcut)
+                userDefaults.set(data, forKey: Key.pasteWithoutLineBreaksShortcut)
             }
         }
     }
@@ -60,7 +60,7 @@ public final class TrimmeurPreferences {
         userDefaults.removeObject(forKey: Key.pasteTrimmedShortcut)
     }
 
-    public func resetTrimClipboardAndRemoveLineBreaksShortcut() {
-        userDefaults.removeObject(forKey: Key.trimClipboardAndRemoveLineBreaksShortcut)
+    public func resetPasteWithoutLineBreaksShortcut() {
+        userDefaults.removeObject(forKey: Key.pasteWithoutLineBreaksShortcut)
     }
 }

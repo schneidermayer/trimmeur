@@ -20,8 +20,8 @@ final class KeyboardShortcutTests: XCTestCase {
         XCTAssertNil(KeyboardShortcut.menuKeyEquivalent(for: shortcut.keyCode))
     }
 
-    func testDefaultTrimClipboardAndRemoveLineBreaksShortcutIsShiftOptionCommandT() {
-        let shortcut = KeyboardShortcut.defaultTrimClipboardAndRemoveLineBreaks
+    func testDefaultPasteWithoutLineBreaksShortcutIsShiftOptionCommandT() {
+        let shortcut = KeyboardShortcut.defaultPasteWithoutLineBreaks
 
         XCTAssertEqual(shortcut.keyCode, 17)
         XCTAssertEqual(shortcut.modifiers, [.shift, .option, .command])

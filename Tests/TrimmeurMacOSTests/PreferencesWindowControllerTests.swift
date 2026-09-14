@@ -29,7 +29,7 @@ final class PreferencesWindowControllerTests: XCTestCase {
                 guard let self else { return }
                 self.recordingChanges.append(isRecording)
                 if !isRecording {
-                    self.shortcutsWhenRecordingEnded.append(self.preferences.trimClipboardAndRemoveLineBreaksShortcut)
+                    self.shortcutsWhenRecordingEnded.append(self.preferences.pasteWithoutLineBreaksShortcut)
                 }
             }
         )
@@ -45,59 +45,59 @@ final class PreferencesWindowControllerTests: XCTestCase {
         super.tearDown()
     }
 
-    func testChangingClipboardShortcutPreservesPasteShortcutAndNotifiesApp() {
+    func testChangingPasteWithoutLineBreaksShortcutPreservesPasteShortcutAndNotifiesApp() {
         let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
 
-        XCTAssertTrue(controller.setShortcut(custom, for: .trimClipboardAndRemoveLineBreaks))
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteWithoutLineBreaks))
 
-        XCTAssertEqual(preferences.trimClipboardAndRemoveLineBreaksShortcut, custom)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, custom)
         XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
         XCTAssertEqual(changeCount, 1)
     }
 
     func testBothActionsRejectShortcutAlreadyUsedByOtherAction() {
-        XCTAssertFalse(controller.setShortcut(.defaultPasteTrimmed, for: .trimClipboardAndRemoveLineBreaks))
-        XCTAssertFalse(controller.setShortcut(.defaultTrimClipboardAndRemoveLineBreaks, for: .pasteTrimmed))
+        XCTAssertFalse(controller.setShortcut(.defaultPasteTrimmed, for: .pasteWithoutLineBreaks))
+        XCTAssertFalse(controller.setShortcut(.defaultPasteWithoutLineBreaks, for: .pasteTrimmed))
 
         XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
-        XCTAssertEqual(preferences.trimClipboardAndRemoveLineBreaksShortcut, .defaultTrimClipboardAndRemoveLineBreaks)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
         XCTAssertEqual(changeCount, 0)
     }
 
     func testResetCannotTakeShortcutAssignedToOtherAction() {
         let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
-        XCTAssertTrue(controller.setShortcut(custom, for: .trimClipboardAndRemoveLineBreaks))
-        XCTAssertTrue(controller.setShortcut(.defaultTrimClipboardAndRemoveLineBreaks, for: .pasteTrimmed))
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteWithoutLineBreaks))
+        XCTAssertTrue(controller.setShortcut(.defaultPasteWithoutLineBreaks, for: .pasteTrimmed))
 
         let resetButton = controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
-            $0.title == "Reset" && $0.tag == PreferencesWindowController.ShortcutAction.trimClipboardAndRemoveLineBreaks.rawValue
+            $0.title == "Reset" && $0.tag == PreferencesWindowController.ShortcutAction.pasteWithoutLineBreaks.rawValue
         }
         XCTAssertNotNil(resetButton)
         resetButton?.performClick(nil)
 
-        XCTAssertEqual(preferences.trimClipboardAndRemoveLineBreaksShortcut, custom)
-        XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultTrimClipboardAndRemoveLineBreaks)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, custom)
+        XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultPasteWithoutLineBreaks)
         XCTAssertEqual(changeCount, 2)
     }
 
     func testResetRestoresOnlySelectedShortcut() {
         let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
-        preferences.trimClipboardAndRemoveLineBreaksShortcut = custom
+        preferences.pasteWithoutLineBreaksShortcut = custom
         preferences.pasteTrimmedShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.control, .option])
 
         let resetButton = controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
-            $0.title == "Reset" && $0.tag == PreferencesWindowController.ShortcutAction.trimClipboardAndRemoveLineBreaks.rawValue
+            $0.title == "Reset" && $0.tag == PreferencesWindowController.ShortcutAction.pasteWithoutLineBreaks.rawValue
         }
         XCTAssertNotNil(resetButton)
         resetButton?.performClick(nil)
 
-        XCTAssertEqual(preferences.trimClipboardAndRemoveLineBreaksShortcut, .defaultTrimClipboardAndRemoveLineBreaks)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
         XCTAssertEqual(preferences.pasteTrimmedShortcut, KeyboardShortcut(keyCode: 9, modifiers: [.control, .option]))
         XCTAssertEqual(changeCount, 1)
     }
 
     func testLeavingPreferencesCancelsRecordingAndResumesHotKeys() throws {
-        let button = try clipboardShortcutButton()
+        let button = try pasteWithoutLineBreaksShortcutButton()
         button.performClick(nil)
         XCTAssertEqual(recordingChanges, [true])
 
@@ -105,16 +105,16 @@ final class PreferencesWindowControllerTests: XCTestCase {
         controller.windowWillClose(Notification(name: NSWindow.willCloseNotification))
 
         XCTAssertEqual(recordingChanges, [true, false])
-        XCTAssertEqual(button.title, KeyboardShortcut.defaultTrimClipboardAndRemoveLineBreaks.displayString)
+        XCTAssertEqual(button.title, KeyboardShortcut.defaultPasteWithoutLineBreaks.displayString)
         XCTAssertEqual(changeCount, 0)
     }
 
     func testAcceptingRecordedShortcutSavesBeforeResumingHotKeys() throws {
-        let button = try clipboardShortcutButton()
+        let button = try pasteWithoutLineBreaksShortcutButton()
         button.performClick(nil)
         let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
 
-        XCTAssertTrue(controller.setShortcut(custom, for: .trimClipboardAndRemoveLineBreaks))
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteWithoutLineBreaks))
 
         XCTAssertEqual(recordingChanges, [true, false])
         XCTAssertEqual(shortcutsWhenRecordingEnded, [custom])
@@ -122,10 +122,10 @@ final class PreferencesWindowControllerTests: XCTestCase {
         XCTAssertEqual(changeCount, 1)
     }
 
-    private func clipboardShortcutButton() throws -> NSButton {
+    private func pasteWithoutLineBreaksShortcutButton() throws -> NSButton {
         try XCTUnwrap(controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
-            $0.title == preferences.trimClipboardAndRemoveLineBreaksShortcut.displayString
-                && $0.tag == PreferencesWindowController.ShortcutAction.trimClipboardAndRemoveLineBreaks.rawValue
+            $0.title == preferences.pasteWithoutLineBreaksShortcut.displayString
+                && $0.tag == PreferencesWindowController.ShortcutAction.pasteWithoutLineBreaks.rawValue
         })
     }
 }

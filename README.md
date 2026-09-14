@@ -6,12 +6,12 @@
 
 The default global shortcut for **Paste Trimmed** is `Option-Command-T`. You can change it in `Preferences...` from the menu-bar icon. The app reads the current text clipboard, removes leading spaces and tabs from every line, temporarily places the trimmed text on the pasteboard, sends `Command-V`, and then restores the original pasteboard contents.
 
-Choose **Paste Without Line Breaks** from the menu-bar icon to remove all line breaks, including Windows and Unicode line endings. It joins the lines without inserting spaces, preserves other whitespace, and restores the original clipboard after pasting.
+Use `Shift-Option-Command-T` or choose **Paste Without Line Breaks** from the menu-bar icon to remove all line breaks, including Windows and Unicode line endings. It joins the lines without inserting spaces, preserves other whitespace, and restores the original clipboard after pasting. You can change the shortcut in `Preferences...`.
 
 The clipboard actions below the divider update the clipboard directly:
 
 - **Trim Clipboard** removes leading spaces and tabs from every line.
-- **Trim Clipboard and Remove Line Breaks** also joins the trimmed lines without inserting spaces. Its default global shortcut is `Shift-Option-Command-T`, which you can change in `Preferences...`.
+- **Trim Clipboard and Remove Line Breaks** also joins the trimmed lines without inserting spaces.
 
 Both leave the result on the clipboard as plain text for your next paste. They do not paste into the active app or require Accessibility permission.
 

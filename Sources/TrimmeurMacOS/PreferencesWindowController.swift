@@ -4,24 +4,24 @@ import TrimmeurCore
 final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     enum ShortcutAction: Int, CaseIterable {
         case pasteTrimmed
-        case trimClipboardAndRemoveLineBreaks
+        case pasteWithoutLineBreaks
 
         var title: String {
             switch self {
             case .pasteTrimmed: return "Paste Trimmed"
-            case .trimClipboardAndRemoveLineBreaks: return "Trim Clipboard and Remove Line Breaks"
+            case .pasteWithoutLineBreaks: return "Paste Without Line Breaks"
             }
         }
 
         var defaultShortcut: KeyboardShortcut {
             switch self {
             case .pasteTrimmed: return .defaultPasteTrimmed
-            case .trimClipboardAndRemoveLineBreaks: return .defaultTrimClipboardAndRemoveLineBreaks
+            case .pasteWithoutLineBreaks: return .defaultPasteWithoutLineBreaks
             }
         }
 
         var other: ShortcutAction {
-            self == .pasteTrimmed ? .trimClipboardAndRemoveLineBreaks : .pasteTrimmed
+            self == .pasteTrimmed ? .pasteWithoutLineBreaks : .pasteTrimmed
         }
     }
 
@@ -171,7 +171,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     private func shortcut(for action: ShortcutAction) -> KeyboardShortcut {
         switch action {
         case .pasteTrimmed: return preferences.pasteTrimmedShortcut
-        case .trimClipboardAndRemoveLineBreaks: return preferences.trimClipboardAndRemoveLineBreaksShortcut
+        case .pasteWithoutLineBreaks: return preferences.pasteWithoutLineBreaksShortcut
         }
     }
 
@@ -216,7 +216,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
 
         switch action {
         case .pasteTrimmed: preferences.pasteTrimmedShortcut = shortcut
-        case .trimClipboardAndRemoveLineBreaks: preferences.trimClipboardAndRemoveLineBreaksShortcut = shortcut
+        case .pasteWithoutLineBreaks: preferences.pasteWithoutLineBreaksShortcut = shortcut
         }
         statusLabel.stringValue = "Shortcut set to \(shortcut.readableString)."
         refresh()

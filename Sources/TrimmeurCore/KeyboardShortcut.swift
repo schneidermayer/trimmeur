@@ -45,7 +45,7 @@ public struct KeyboardShortcut: Codable, Equatable, Sendable {
         modifiers: [.option, .command]
     )
 
-    public static let defaultTrimClipboardAndRemoveLineBreaks = KeyboardShortcut(
+    public static let defaultPasteWithoutLineBreaks = KeyboardShortcut(
         keyCode: 17,
         modifiers: [.shift, .option, .command]
     )

@@ -5,10 +5,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let appName = "Trimmeur"
     private var statusItem: NSStatusItem?
     private var pasteMenuItems: [NSMenuItem] = []
-    private var trimClipboardMenuItems: [NSMenuItem] = []
+    private var pasteWithoutLineBreaksMenuItems: [NSMenuItem] = []
     private var preferencesWindowController: PreferencesWindowController?
     private let pasteHotKey = GlobalHotKey(identifier: 1)
-    private let trimClipboardHotKey = GlobalHotKey(identifier: 2)
+    private let pasteWithoutLineBreaksHotKey = GlobalHotKey(identifier: 2)
     private let pasteService = PasteTrimmedService()
     private let preferences = TrimmeurPreferences()
     private var isRecordingShortcut = false
@@ -78,16 +78,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func makePasteWithoutLineBreaksMenuItem() -> NSMenuItem {
-        makeMenuItem(title: "Paste Without Line Breaks", action: #selector(pasteWithoutLineBreaks), keyEquivalent: "")
+        let item = makeMenuItem(title: "Paste Without Line Breaks", action: #selector(pasteWithoutLineBreaks), keyEquivalent: "")
+        pasteWithoutLineBreaksMenuItems.append(item)
+        configurePasteWithoutLineBreaksMenuItem(item)
+        return item
     }
 
     private func addClipboardMenuItems(to menu: NSMenu) {
         menu.addItem(.separator())
         menu.addItem(makeMenuItem(title: "Trim Clipboard", action: #selector(trimClipboard), keyEquivalent: ""))
-        let trimItem = makeMenuItem(title: "Trim Clipboard and Remove Line Breaks", action: #selector(trimClipboardAndRemoveLineBreaks), keyEquivalent: "")
-        trimClipboardMenuItems.append(trimItem)
-        configureTrimClipboardMenuItem(trimItem)
-        menu.addItem(trimItem)
+        menu.addItem(makeMenuItem(title: "Trim Clipboard and Remove Line Breaks", action: #selector(trimClipboardAndRemoveLineBreaks), keyEquivalent: ""))
         menu.addItem(.separator())
     }
 
@@ -97,9 +97,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    private func configureTrimClipboardMenuItem(_ item: NSMenuItem) {
-        let shortcut = preferences.trimClipboardAndRemoveLineBreaksShortcut
-        let title = "Trim Clipboard and Remove Line Breaks"
+    private func configurePasteWithoutLineBreaksMenuItem(_ item: NSMenuItem) {
+        let shortcut = preferences.pasteWithoutLineBreaksShortcut
+        let title = "Paste Without Line Breaks"
         item.title = shortcut.menuKeyEquivalent.isEmpty ? "\(title) (\(shortcut.displayString))" : title
         item.keyEquivalent = shortcut.menuKeyEquivalent
         item.keyEquivalentModifierMask = shortcut.cocoaModifierFlags
@@ -110,14 +110,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         register(pasteHotKey, shortcut: preferences.pasteTrimmedShortcut, actionName: "Paste Trimmed") { [weak self] in
             self?.pasteTrimmed(nil)
         }
-        register(trimClipboardHotKey, shortcut: preferences.trimClipboardAndRemoveLineBreaksShortcut, actionName: "Trim Clipboard and Remove Line Breaks") { [weak self] in
-            self?.trimClipboardAndRemoveLineBreaks(nil)
+        register(pasteWithoutLineBreaksHotKey, shortcut: preferences.pasteWithoutLineBreaksShortcut, actionName: "Paste Without Line Breaks") { [weak self] in
+            self?.pasteWithoutLineBreaks(nil)
         }
     }
 
     private func unregisterHotKeys() {
         pasteHotKey.unregister()
-        trimClipboardHotKey.unregister()
+        pasteWithoutLineBreaksHotKey.unregister()
     }
 
     private func register(_ hotKey: GlobalHotKey, shortcut: KeyboardShortcut, actionName: String, handler: @escaping () -> Void) {
@@ -140,8 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for item in pasteMenuItems {
             configurePasteMenuItem(item)
         }
-        for item in trimClipboardMenuItems {
-            configureTrimClipboardMenuItem(item)
+        for item in pasteWithoutLineBreaksMenuItems {
+            configurePasteWithoutLineBreaksMenuItem(item)
         }
     }
 
