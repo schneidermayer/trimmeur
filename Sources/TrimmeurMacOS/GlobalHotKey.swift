@@ -20,10 +20,14 @@ final class GlobalHotKey {
     typealias Handler = () -> Void
 
     private let signature = OSType(0x54524D52) // TRMR
-    private let hotKeyIdentifier = UInt32(1)
+    private let hotKeyIdentifier: UInt32
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
     private var handler: Handler?
+
+    init(identifier: UInt32) {
+        hotKeyIdentifier = identifier
+    }
 
     deinit {
         unregister()
@@ -41,7 +45,7 @@ final class GlobalHotKey {
         let handlerStatus = InstallEventHandler(
             GetApplicationEventTarget(),
             { _, event, userData in
-                guard let event, let userData else { return noErr }
+                guard let event, let userData else { return OSStatus(eventNotHandledErr) }
 
                 let hotKey = Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue()
                 var eventHotKeyID = EventHotKeyID()
@@ -58,7 +62,7 @@ final class GlobalHotKey {
                 guard status == noErr else { return status }
                 guard eventHotKeyID.signature == hotKey.signature,
                       eventHotKeyID.id == hotKey.hotKeyIdentifier else {
-                    return noErr
+                    return OSStatus(eventNotHandledErr)
                 }
 
                 hotKey.handler?()

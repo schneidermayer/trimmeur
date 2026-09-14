@@ -2,27 +2,53 @@ import AppKit
 import TrimmeurCore
 
 final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
+    enum ShortcutAction: Int, CaseIterable {
+        case pasteTrimmed
+        case trimClipboardAndRemoveLineBreaks
+
+        var title: String {
+            switch self {
+            case .pasteTrimmed: return "Paste Trimmed"
+            case .trimClipboardAndRemoveLineBreaks: return "Trim Clipboard and Remove Line Breaks"
+            }
+        }
+
+        var defaultShortcut: KeyboardShortcut {
+            switch self {
+            case .pasteTrimmed: return .defaultPasteTrimmed
+            case .trimClipboardAndRemoveLineBreaks: return .defaultTrimClipboardAndRemoveLineBreaks
+            }
+        }
+
+        var other: ShortcutAction {
+            self == .pasteTrimmed ? .trimClipboardAndRemoveLineBreaks : .pasteTrimmed
+        }
+    }
+
     private let preferences: TrimmeurPreferences
     private let autoStartManager: AutoStartManaging
     private let onShortcutChanged: () -> Void
+    private let onShortcutRecordingChanged: (Bool) -> Void
     private var recordingMonitor: Any?
+    private var recordingAction: ShortcutAction?
 
-    private let shortcutButton = NSButton(title: "", target: nil, action: nil)
-    private let resetShortcutButton = NSButton(title: "Reset", target: nil, action: nil)
+    private var shortcutButtons: [ShortcutAction: NSButton] = [:]
     private let startOnLoginCheckbox = NSButton(checkboxWithTitle: "Start on login", target: nil, action: nil)
     private let statusLabel = NSTextField(labelWithString: "")
 
     init(
         preferences: TrimmeurPreferences,
         autoStartManager: AutoStartManaging = AutoStartManager(),
-        onShortcutChanged: @escaping () -> Void
+        onShortcutChanged: @escaping () -> Void,
+        onShortcutRecordingChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.preferences = preferences
         self.autoStartManager = autoStartManager
         self.onShortcutChanged = onShortcutChanged
+        self.onShortcutRecordingChanged = onShortcutRecordingChanged
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 190),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 292),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -53,22 +79,54 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         stopRecording()
     }
 
+    func windowDidResignKey(_ notification: Notification) {
+        stopRecording()
+    }
+
     private func buildContent() {
         guard let contentView = window?.contentView else { return }
 
-        let titleLabel = NSTextField(labelWithString: "Paste Trimmed")
-        titleLabel.font = .boldSystemFont(ofSize: 14)
+        var previousButton: NSButton?
+        for action in ShortcutAction.allCases {
+            let titleLabel = NSTextField(labelWithString: action.title)
+            titleLabel.font = .boldSystemFont(ofSize: 14)
 
-        let shortcutTitleLabel = NSTextField(labelWithString: "Shortcut")
-        shortcutTitleLabel.alignment = .right
+            let shortcutTitleLabel = NSTextField(labelWithString: "Shortcut")
+            shortcutTitleLabel.alignment = .right
 
-        shortcutButton.bezelStyle = .rounded
-        shortcutButton.target = self
-        shortcutButton.action = #selector(beginRecording)
+            let shortcutButton = NSButton(title: "", target: self, action: #selector(beginRecording(_:)))
+            shortcutButton.bezelStyle = .rounded
+            shortcutButton.tag = action.rawValue
+            shortcutButtons[action] = shortcutButton
 
-        resetShortcutButton.bezelStyle = .rounded
-        resetShortcutButton.target = self
-        resetShortcutButton.action = #selector(resetShortcut)
+            let resetButton = NSButton(title: "Reset", target: self, action: #selector(resetShortcut(_:)))
+            resetButton.bezelStyle = .rounded
+            resetButton.tag = action.rawValue
+
+            for view in [titleLabel, shortcutTitleLabel, shortcutButton, resetButton] {
+                view.translatesAutoresizingMaskIntoConstraints = false
+                contentView.addSubview(view)
+            }
+
+            NSLayoutConstraint.activate([
+                titleLabel.topAnchor.constraint(equalTo: previousButton?.bottomAnchor ?? contentView.topAnchor, constant: 22),
+                titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+                titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -24),
+
+                shortcutTitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 14),
+                shortcutTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+                shortcutTitleLabel.widthAnchor.constraint(equalToConstant: 86),
+
+                shortcutButton.centerYAnchor.constraint(equalTo: shortcutTitleLabel.centerYAnchor),
+                shortcutButton.leadingAnchor.constraint(equalTo: shortcutTitleLabel.trailingAnchor, constant: 12),
+                shortcutButton.widthAnchor.constraint(equalToConstant: 180),
+
+                resetButton.centerYAnchor.constraint(equalTo: shortcutButton.centerYAnchor),
+                resetButton.leadingAnchor.constraint(equalTo: shortcutButton.trailingAnchor, constant: 8),
+                resetButton.widthAnchor.constraint(equalToConstant: 76),
+            ])
+            previousButton = shortcutButton
+        }
 
         startOnLoginCheckbox.target = self
         startOnLoginCheckbox.action = #selector(toggleStartOnLogin)
@@ -81,29 +139,14 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         doneButton.bezelStyle = .rounded
         doneButton.keyEquivalent = "\r"
 
-        for view in [titleLabel, shortcutTitleLabel, shortcutButton, resetShortcutButton, startOnLoginCheckbox, statusLabel, doneButton] {
+        for view in [startOnLoginCheckbox, statusLabel, doneButton] {
             view.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview(view)
         }
 
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 22),
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
-
-            shortcutTitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 24),
-            shortcutTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
-            shortcutTitleLabel.widthAnchor.constraint(equalToConstant: 86),
-
-            shortcutButton.centerYAnchor.constraint(equalTo: shortcutTitleLabel.centerYAnchor),
-            shortcutButton.leadingAnchor.constraint(equalTo: shortcutTitleLabel.trailingAnchor, constant: 12),
-            shortcutButton.widthAnchor.constraint(equalToConstant: 160),
-
-            resetShortcutButton.centerYAnchor.constraint(equalTo: shortcutButton.centerYAnchor),
-            resetShortcutButton.leadingAnchor.constraint(equalTo: shortcutButton.trailingAnchor, constant: 8),
-            resetShortcutButton.widthAnchor.constraint(equalToConstant: 76),
-
-            startOnLoginCheckbox.topAnchor.constraint(equalTo: shortcutButton.bottomAnchor, constant: 20),
-            startOnLoginCheckbox.leadingAnchor.constraint(equalTo: shortcutButton.leadingAnchor),
+            startOnLoginCheckbox.topAnchor.constraint(equalTo: previousButton!.bottomAnchor, constant: 20),
+            startOnLoginCheckbox.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 122),
 
             statusLabel.topAnchor.constraint(equalTo: startOnLoginCheckbox.bottomAnchor, constant: 14),
             statusLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
@@ -116,16 +159,28 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func refresh() {
-        shortcutButton.title = preferences.pasteTrimmedShortcut.displayString
+        for (action, button) in shortcutButtons {
+            button.title = action == recordingAction ? "Press shortcut..." : shortcut(for: action).displayString
+        }
         startOnLoginCheckbox.state = autoStartManager.isEnabled ? .on : .off
         if statusLabel.stringValue.isEmpty {
             statusLabel.stringValue = "Click the shortcut button, then press the new key combination."
         }
     }
 
-    @objc private func beginRecording() {
+    private func shortcut(for action: ShortcutAction) -> KeyboardShortcut {
+        switch action {
+        case .pasteTrimmed: return preferences.pasteTrimmedShortcut
+        case .trimClipboardAndRemoveLineBreaks: return preferences.trimClipboardAndRemoveLineBreaksShortcut
+        }
+    }
+
+    @objc private func beginRecording(_ sender: NSButton) {
+        guard let action = ShortcutAction(rawValue: sender.tag) else { return }
         stopRecording()
-        shortcutButton.title = "Press shortcut..."
+        recordingAction = action
+        onShortcutRecordingChanged(true)
+        refresh()
         statusLabel.stringValue = "Press a key with Command, Option, or Control. Escape cancels."
         window?.makeFirstResponder(nil)
 
@@ -136,6 +191,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func handleShortcutEvent(_ event: NSEvent) {
+        guard let action = recordingAction else { return }
         if event.keyCode == 53 {
             stopRecording()
             statusLabel.stringValue = "Shortcut recording canceled."
@@ -148,11 +204,25 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
             return
         }
 
-        preferences.pasteTrimmedShortcut = shortcut
-        stopRecording()
+        _ = setShortcut(shortcut, for: action)
+    }
+
+    @discardableResult
+    func setShortcut(_ shortcut: KeyboardShortcut, for action: ShortcutAction) -> Bool {
+        guard shortcut != self.shortcut(for: action.other) else {
+            statusLabel.stringValue = "Already used by \(action.other.title). Choose another shortcut."
+            return false
+        }
+
+        switch action {
+        case .pasteTrimmed: preferences.pasteTrimmedShortcut = shortcut
+        case .trimClipboardAndRemoveLineBreaks: preferences.trimClipboardAndRemoveLineBreaksShortcut = shortcut
+        }
         statusLabel.stringValue = "Shortcut set to \(shortcut.readableString)."
         refresh()
         onShortcutChanged()
+        stopRecording()
+        return true
     }
 
     private func stopRecording() {
@@ -160,13 +230,17 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
             NSEvent.removeMonitor(recordingMonitor)
         }
         recordingMonitor = nil
+        if recordingAction != nil {
+            recordingAction = nil
+            refresh()
+            onShortcutRecordingChanged(false)
+        }
     }
 
-    @objc private func resetShortcut() {
-        preferences.resetShortcut()
-        statusLabel.stringValue = "Shortcut reset to \(KeyboardShortcut.defaultPasteTrimmed.readableString)."
-        refresh()
-        onShortcutChanged()
+    @objc private func resetShortcut(_ sender: NSButton) {
+        guard let action = ShortcutAction(rawValue: sender.tag),
+              setShortcut(action.defaultShortcut, for: action) else { return }
+        statusLabel.stringValue = "Shortcut reset to \(action.defaultShortcut.readableString)."
     }
 
     @objc private func toggleStartOnLogin() {

@@ -5,20 +5,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let appName = "Trimmeur"
     private var statusItem: NSStatusItem?
     private var pasteMenuItems: [NSMenuItem] = []
+    private var trimClipboardMenuItems: [NSMenuItem] = []
     private var preferencesWindowController: PreferencesWindowController?
-    private let hotKey = GlobalHotKey()
+    private let pasteHotKey = GlobalHotKey(identifier: 1)
+    private let trimClipboardHotKey = GlobalHotKey(identifier: 2)
     private let pasteService = PasteTrimmedService()
     private let preferences = TrimmeurPreferences()
+    private var isRecordingShortcut = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         closeAlreadyRunningInstancesIfNeeded()
         setupMainMenu()
         setupStatusItem()
-        registerHotKey()
+        registerHotKeys()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        hotKey.unregister()
+        unregisterHotKeys()
     }
 
     private func setupMainMenu() {
@@ -81,7 +84,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func addClipboardMenuItems(to menu: NSMenu) {
         menu.addItem(.separator())
         menu.addItem(makeMenuItem(title: "Trim Clipboard", action: #selector(trimClipboard), keyEquivalent: ""))
-        menu.addItem(makeMenuItem(title: "Trim Clipboard and Remove Line Breaks", action: #selector(trimClipboardAndRemoveLineBreaks), keyEquivalent: ""))
+        let trimItem = makeMenuItem(title: "Trim Clipboard and Remove Line Breaks", action: #selector(trimClipboardAndRemoveLineBreaks), keyEquivalent: "")
+        trimClipboardMenuItems.append(trimItem)
+        configureTrimClipboardMenuItem(trimItem)
+        menu.addItem(trimItem)
         menu.addItem(.separator())
     }
 
@@ -91,16 +97,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    private func registerHotKey() {
-        let shortcut = preferences.pasteTrimmedShortcut
+    private func configureTrimClipboardMenuItem(_ item: NSMenuItem) {
+        let shortcut = preferences.trimClipboardAndRemoveLineBreaksShortcut
+        let title = "Trim Clipboard and Remove Line Breaks"
+        item.title = shortcut.menuKeyEquivalent.isEmpty ? "\(title) (\(shortcut.displayString))" : title
+        item.keyEquivalent = shortcut.menuKeyEquivalent
+        item.keyEquivalentModifierMask = shortcut.cocoaModifierFlags
+    }
+
+    private func registerHotKeys() {
+        unregisterHotKeys()
+        register(pasteHotKey, shortcut: preferences.pasteTrimmedShortcut, actionName: "Paste Trimmed") { [weak self] in
+            self?.pasteTrimmed(nil)
+        }
+        register(trimClipboardHotKey, shortcut: preferences.trimClipboardAndRemoveLineBreaksShortcut, actionName: "Trim Clipboard and Remove Line Breaks") { [weak self] in
+            self?.trimClipboardAndRemoveLineBreaks(nil)
+        }
+    }
+
+    private func unregisterHotKeys() {
+        pasteHotKey.unregister()
+        trimClipboardHotKey.unregister()
+    }
+
+    private func register(_ hotKey: GlobalHotKey, shortcut: KeyboardShortcut, actionName: String, handler: @escaping () -> Void) {
         do {
-            try hotKey.register(shortcut: shortcut) { [weak self] in
-                self?.pasteTrimmed(nil)
-            }
+            try hotKey.register(shortcut: shortcut, handler: handler)
         } catch {
             let alert = NSAlert()
             alert.messageText = "Could not register \(shortcut.readableString)"
-            alert.informativeText = error.localizedDescription
+            alert.informativeText = "\(actionName): \(error.localizedDescription)"
             alert.alertStyle = .warning
             alert.addButton(withTitle: "OK")
             alert.runModal()
@@ -108,9 +134,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func refreshShortcut() {
-        registerHotKey()
+        if !isRecordingShortcut {
+            registerHotKeys()
+        }
         for item in pasteMenuItems {
             configurePasteMenuItem(item)
+        }
+        for item in trimClipboardMenuItems {
+            configureTrimClipboardMenuItem(item)
         }
     }
 
@@ -191,9 +222,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openPreferences() {
         if preferencesWindowController == nil {
-            preferencesWindowController = PreferencesWindowController(preferences: preferences) { [weak self] in
-                self?.refreshShortcut()
-            }
+            preferencesWindowController = PreferencesWindowController(
+                preferences: preferences,
+                onShortcutChanged: { [weak self] in
+                    self?.refreshShortcut()
+                },
+                onShortcutRecordingChanged: { [weak self] isRecording in
+                    self?.isRecordingShortcut = isRecording
+                    if isRecording {
+                        self?.unregisterHotKeys()
+                    } else {
+                        self?.registerHotKeys()
+                    }
+                }
+            )
         }
 
         preferencesWindowController?.showWindow(nil)

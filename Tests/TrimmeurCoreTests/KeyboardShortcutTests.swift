@@ -19,4 +19,14 @@ final class KeyboardShortcutTests: XCTestCase {
         XCTAssertEqual(shortcut.readableString, "Control-Shift-Key 999")
         XCTAssertNil(KeyboardShortcut.menuKeyEquivalent(for: shortcut.keyCode))
     }
+
+    func testDefaultTrimClipboardAndRemoveLineBreaksShortcutIsShiftOptionCommandT() {
+        let shortcut = KeyboardShortcut.defaultTrimClipboardAndRemoveLineBreaks
+
+        XCTAssertEqual(shortcut.keyCode, 17)
+        XCTAssertEqual(shortcut.modifiers, [.shift, .option, .command])
+        XCTAssertEqual(shortcut.displayString, "⌥⇧⌘T")
+        XCTAssertEqual(shortcut.readableString, "Option-Shift-Command-T")
+        XCTAssertEqual(KeyboardShortcut.menuKeyEquivalent(for: shortcut.keyCode), "t")
+    }
 }

@@ -45,6 +45,11 @@ public struct KeyboardShortcut: Codable, Equatable, Sendable {
         modifiers: [.option, .command]
     )
 
+    public static let defaultTrimClipboardAndRemoveLineBreaks = KeyboardShortcut(
+        keyCode: 17,
+        modifiers: [.shift, .option, .command]
+    )
+
     public var displayString: String {
         "\(modifiers.displayString)\(Self.keyDisplayName(for: keyCode))"
     }

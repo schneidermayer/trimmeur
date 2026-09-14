@@ -11,7 +11,7 @@ Choose **Paste Without Line Breaks** from the menu-bar icon to remove all line b
 The clipboard actions below the divider update the clipboard directly:
 
 - **Trim Clipboard** removes leading spaces and tabs from every line.
-- **Trim Clipboard and Remove Line Breaks** also joins the trimmed lines without inserting spaces.
+- **Trim Clipboard and Remove Line Breaks** also joins the trimmed lines without inserting spaces. Its default global shortcut is `Shift-Option-Command-T`, which you can change in `Preferences...`.
 
 Both leave the result on the clipboard as plain text for your next paste. They do not paste into the active app or require Accessibility permission.
 
