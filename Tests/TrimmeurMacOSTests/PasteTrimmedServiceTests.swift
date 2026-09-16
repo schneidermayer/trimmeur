@@ -49,6 +49,28 @@ final class PasteTrimmedServiceTests: XCTestCase {
         XCTAssertEqual(pasteEventSender.sendCount, 1)
     }
 
+    func testPasteWithoutLineBreaksCollapsesJoinedSpacesAndRestoresOriginalFormatting() {
+        let original = "first  value  \r\n   second \n \n third  value"
+        let expectedPaste = "first  value second third  value"
+        setTextWithFormatting(original)
+        let originalFormatting = pasteboard.data(forType: .rtf)
+        let pasteboard = self.pasteboard!
+        pasteEventSender.onSendPaste = {
+            XCTAssertEqual(pasteboard.string(forType: .string), expectedPaste)
+            XCTAssertNil(pasteboard.data(forType: .rtf))
+        }
+
+        XCTAssertEqual(service.pasteWithoutLineBreaksClipboard(), .pasted)
+        XCTAssertEqual(pasteboard.string(forType: .string), expectedPaste)
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+
+        waitForPendingMainQueueWork()
+
+        XCTAssertEqual(pasteboard.string(forType: .string), original)
+        XCTAssertEqual(pasteboard.data(forType: .rtf), originalFormatting)
+        XCTAssertEqual(pasteEventSender.sendCount, 1)
+    }
+
     func testPendingPasteWithoutLineBreaksRestorationPreservesNewerClipboardContents() {
         setTextWithFormatting("  original\n\ttext")
         XCTAssertEqual(service.pasteWithoutLineBreaksClipboard(), .pasted)

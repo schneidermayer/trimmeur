@@ -32,10 +32,28 @@ public enum TextTrimmer {
         var result = String()
         result.reserveCapacity(text.count)
 
-        for scalar in text.unicodeScalars where !CharacterSet.newlines.contains(scalar) {
+        var pendingSpaceCount = 0
+        var hasLineBreakAfterSpaces = false
+
+        for scalar in text.unicodeScalars {
+            if CharacterSet.newlines.contains(scalar) {
+                hasLineBreakAfterSpaces = pendingSpaceCount > 0
+                continue
+            }
+
+            if scalar == " " {
+                // Collapse only space runs that meet across a removed line break.
+                pendingSpaceCount = hasLineBreakAfterSpaces ? 1 : pendingSpaceCount + 1
+                continue
+            }
+
+            result.append(String(repeating: " ", count: pendingSpaceCount))
+            pendingSpaceCount = 0
+            hasLineBreakAfterSpaces = false
             result.unicodeScalars.append(scalar)
         }
 
+        result.append(String(repeating: " ", count: pendingSpaceCount))
         return result
     }
 

@@ -67,6 +67,41 @@ final class TextTrimmerTests: XCTestCase {
         XCTAssertEqual(TextTrimmer.removingLineBreaks(from: lineBreaks.joined()), "")
     }
 
+    func testRemovingLineBreaksCollapsesSpaceRunsThatMeetAtTheJoin() {
+        let lineBreaks = ["\n", "\r", "\r\n", "\u{000B}", "\u{000C}", "\u{0085}", "\u{2028}", "\u{2029}"]
+
+        for lineBreak in lineBreaks {
+            XCTAssertEqual(TextTrimmer.removingLineBreaks(from: "one \(lineBreak) two"), "one two")
+            XCTAssertEqual(TextTrimmer.removingLineBreaks(from: "one   \(lineBreak)  two"), "one two")
+        }
+    }
+
+    func testRemovingLineBreaksCollapsesJoinedSpacesAcrossBlankLines() {
+        let inputs = ["one \n\n two", "one  \r\n   \n  two", "one \n  \ntwo", " \n "]
+        let expected = ["one two", "one two", "one two", " "]
+
+        for (input, output) in zip(inputs, expected) {
+            XCTAssertEqual(TextTrimmer.removingLineBreaks(from: input), output)
+        }
+    }
+
+    func testRemovingLineBreaksPreservesSpaceRunsThatDoNotMeetAtAJoin() {
+        let cases = [
+            ("one  \ntwo", "one  two"),
+            ("one\n  two", "one  two"),
+            ("one\n  \ntwo", "one  two"),
+            ("\n  one  \n", "  one  "),
+            ("one  value \n two  values", "one  value two  values"),
+            ("one \n\t two", "one \t two"),
+            ("one\u{00A0}\n two", "one\u{00A0} two"),
+            ("one \u{0301}\n two", "one \u{0301} two")
+        ]
+
+        for (input, expected) in cases {
+            XCTAssertEqual(TextTrimmer.removingLineBreaks(from: input), expected)
+        }
+    }
+
     func testRemovingLineBreaksPreservesOtherWhitespaceAndUnicode() {
         let input = " \tCaf\u{0065}\u{0301}\u{00A0}\n\t👩🏽‍💻\u{2003}\r\n  日本語\u{202F} "
         let expected = " \tCaf\u{0065}\u{0301}\u{00A0}\t👩🏽‍💻\u{2003}  日本語\u{202F} "
