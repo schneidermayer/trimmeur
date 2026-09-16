@@ -6,9 +6,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var pasteMenuItems: [NSMenuItem] = []
     private var pasteWithoutLineBreaksMenuItems: [NSMenuItem] = []
+    private var pasteLowercaseMenuItems: [NSMenuItem] = []
     private var preferencesWindowController: PreferencesWindowController?
     private let pasteHotKey = GlobalHotKey(identifier: 1)
     private let pasteWithoutLineBreaksHotKey = GlobalHotKey(identifier: 2)
+    private let pasteLowercaseHotKey = GlobalHotKey(identifier: 3)
     private let pasteService = PasteTrimmedService()
     private let preferences = TrimmeurPreferences()
     private var isRecordingShortcut = false
@@ -33,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenuItem.submenu = appMenu
         appMenu.addItem(makePasteMenuItem())
         appMenu.addItem(makePasteWithoutLineBreaksMenuItem())
+        appMenu.addItem(makePasteLowercaseMenuItem())
         addClipboardMenuItems(to: appMenu)
         appMenu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ","))
         appMenu.addItem(.separator())
@@ -52,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(makePasteMenuItem())
         menu.addItem(makePasteWithoutLineBreaksMenuItem())
+        menu.addItem(makePasteLowercaseMenuItem())
         addClipboardMenuItems(to: menu)
         menu.addItem(makeMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ""))
         menu.addItem(.separator())
@@ -71,16 +75,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configurePasteMenuItem(_ item: NSMenuItem) {
-        let shortcut = preferences.pasteTrimmedShortcut
-        item.title = shortcut.menuKeyEquivalent.isEmpty ? "Paste Trimmed (\(shortcut.displayString))" : "Paste Trimmed"
-        item.keyEquivalent = shortcut.menuKeyEquivalent
-        item.keyEquivalentModifierMask = shortcut.cocoaModifierFlags
+        Self.configurePasteMenuItem(item, title: "Paste Trimmed", shortcut: preferences.pasteTrimmedShortcut)
     }
 
     private func makePasteWithoutLineBreaksMenuItem() -> NSMenuItem {
         let item = makeMenuItem(title: "Paste Without Line Breaks", action: #selector(pasteWithoutLineBreaks), keyEquivalent: "")
         pasteWithoutLineBreaksMenuItems.append(item)
         configurePasteWithoutLineBreaksMenuItem(item)
+        return item
+    }
+
+    private func makePasteLowercaseMenuItem() -> NSMenuItem {
+        let item = makeMenuItem(title: "Paste Lowercase", action: #selector(pasteLowercase), keyEquivalent: "")
+        pasteLowercaseMenuItems.append(item)
+        configurePasteLowercaseMenuItem(item)
         return item
     }
 
@@ -98,8 +106,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configurePasteWithoutLineBreaksMenuItem(_ item: NSMenuItem) {
-        let shortcut = preferences.pasteWithoutLineBreaksShortcut
-        let title = "Paste Without Line Breaks"
+        Self.configurePasteMenuItem(item, title: "Paste Without Line Breaks", shortcut: preferences.pasteWithoutLineBreaksShortcut)
+    }
+
+    private func configurePasteLowercaseMenuItem(_ item: NSMenuItem) {
+        Self.configurePasteMenuItem(item, title: "Paste Lowercase", shortcut: preferences.pasteLowercaseShortcut)
+    }
+
+    static func configurePasteMenuItem(_ item: NSMenuItem, title: String, shortcut: KeyboardShortcut?) {
+        guard let shortcut else {
+            item.title = title
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            return
+        }
+
         item.title = shortcut.menuKeyEquivalent.isEmpty ? "\(title) (\(shortcut.displayString))" : title
         item.keyEquivalent = shortcut.menuKeyEquivalent
         item.keyEquivalentModifierMask = shortcut.cocoaModifierFlags
@@ -113,11 +134,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         register(pasteWithoutLineBreaksHotKey, shortcut: preferences.pasteWithoutLineBreaksShortcut, actionName: "Paste Without Line Breaks") { [weak self] in
             self?.pasteWithoutLineBreaks(nil)
         }
+        if let shortcut = preferences.pasteLowercaseShortcut {
+            register(pasteLowercaseHotKey, shortcut: shortcut, actionName: "Paste Lowercase") { [weak self] in
+                self?.pasteLowercase(nil)
+            }
+        }
     }
 
     private func unregisterHotKeys() {
         pasteHotKey.unregister()
         pasteWithoutLineBreaksHotKey.unregister()
+        pasteLowercaseHotKey.unregister()
     }
 
     private func register(_ hotKey: GlobalHotKey, shortcut: KeyboardShortcut, actionName: String, handler: @escaping () -> Void) {
@@ -142,6 +169,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         for item in pasteWithoutLineBreaksMenuItems {
             configurePasteWithoutLineBreaksMenuItem(item)
+        }
+        for item in pasteLowercaseMenuItems {
+            configurePasteLowercaseMenuItem(item)
         }
     }
 
@@ -179,6 +209,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func pasteWithoutLineBreaks(_ sender: Any?) {
         pasteClipboard(using: pasteService.pasteWithoutLineBreaksClipboard)
+    }
+
+    @objc private func pasteLowercase(_ sender: Any?) {
+        pasteClipboard(using: pasteService.pasteLowercaseClipboard)
     }
 
     private func pasteClipboard(using paste: () -> PasteTrimmedService.PasteResult) {

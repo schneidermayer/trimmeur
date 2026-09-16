@@ -8,6 +8,8 @@ The default global shortcut for **Paste Trimmed** is `Option-Command-T`. You can
 
 Use `Shift-Option-Command-T` or choose **Paste Without Line Breaks** from the menu-bar icon to remove all line breaks, including Windows and Unicode line endings. It joins the lines without inserting spaces and collapses ordinary spaces on both sides of a removed line break to a single space. It preserves other whitespace and restores the original clipboard after pasting. You can change the shortcut in `Preferences...`.
 
+Choose **Paste Lowercase** to paste clipboard text in lowercase, preserving spaces, indentation, and line breaks. It restores the original clipboard after pasting. No shortcut is assigned by default; you can assign one in `Preferences...` and clear it again there.
+
 The clipboard actions below the divider update the clipboard directly:
 
 - **Trim Clipboard** removes leading spaces and tabs from every line.

@@ -36,6 +36,10 @@ final class PasteTrimmedService {
         pasteClipboard(transform: TextTrimmer.removingLineBreaks)
     }
 
+    func pasteLowercaseClipboard() -> PasteResult {
+        pasteClipboard { $0.lowercased() }
+    }
+
     func trimClipboard() -> ClipboardUpdateResult {
         updateClipboard(transform: TextTrimmer.removingIndentation)
     }

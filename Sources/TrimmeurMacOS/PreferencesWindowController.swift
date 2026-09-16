@@ -5,23 +5,22 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     enum ShortcutAction: Int, CaseIterable {
         case pasteTrimmed
         case pasteWithoutLineBreaks
+        case pasteLowercase
 
         var title: String {
             switch self {
             case .pasteTrimmed: return "Paste Trimmed"
             case .pasteWithoutLineBreaks: return "Paste Without Line Breaks"
+            case .pasteLowercase: return "Paste Lowercase"
             }
         }
 
-        var defaultShortcut: KeyboardShortcut {
+        var defaultShortcut: KeyboardShortcut? {
             switch self {
             case .pasteTrimmed: return .defaultPasteTrimmed
             case .pasteWithoutLineBreaks: return .defaultPasteWithoutLineBreaks
+            case .pasteLowercase: return nil
             }
-        }
-
-        var other: ShortcutAction {
-            self == .pasteTrimmed ? .pasteWithoutLineBreaks : .pasteTrimmed
         }
     }
 
@@ -48,7 +47,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         self.onShortcutRecordingChanged = onShortcutRecordingChanged
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 292),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 380),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -99,7 +98,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
             shortcutButton.tag = action.rawValue
             shortcutButtons[action] = shortcutButton
 
-            let resetButton = NSButton(title: "Reset", target: self, action: #selector(resetShortcut(_:)))
+            let resetButton = NSButton(
+                title: action.defaultShortcut == nil ? "Clear" : "Reset",
+                target: self,
+                action: #selector(resetShortcut(_:))
+            )
             resetButton.bezelStyle = .rounded
             resetButton.tag = action.rawValue
 
@@ -160,7 +163,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
 
     private func refresh() {
         for (action, button) in shortcutButtons {
-            button.title = action == recordingAction ? "Press shortcut..." : shortcut(for: action).displayString
+            button.title = action == recordingAction ? "Press shortcut..." : shortcut(for: action)?.displayString ?? "No Shortcut"
         }
         startOnLoginCheckbox.state = autoStartManager.isEnabled ? .on : .off
         if statusLabel.stringValue.isEmpty {
@@ -168,10 +171,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
-    private func shortcut(for action: ShortcutAction) -> KeyboardShortcut {
+    private func shortcut(for action: ShortcutAction) -> KeyboardShortcut? {
         switch action {
         case .pasteTrimmed: return preferences.pasteTrimmedShortcut
         case .pasteWithoutLineBreaks: return preferences.pasteWithoutLineBreaksShortcut
+        case .pasteLowercase: return preferences.pasteLowercaseShortcut
         }
     }
 
@@ -209,14 +213,17 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
 
     @discardableResult
     func setShortcut(_ shortcut: KeyboardShortcut, for action: ShortcutAction) -> Bool {
-        guard shortcut != self.shortcut(for: action.other) else {
-            statusLabel.stringValue = "Already used by \(action.other.title). Choose another shortcut."
+        if let conflictingAction = ShortcutAction.allCases.first(where: {
+            $0 != action && shortcut == self.shortcut(for: $0)
+        }) {
+            statusLabel.stringValue = "Already used by \(conflictingAction.title). Choose another shortcut."
             return false
         }
 
         switch action {
         case .pasteTrimmed: preferences.pasteTrimmedShortcut = shortcut
         case .pasteWithoutLineBreaks: preferences.pasteWithoutLineBreaksShortcut = shortcut
+        case .pasteLowercase: preferences.pasteLowercaseShortcut = shortcut
         }
         statusLabel.stringValue = "Shortcut set to \(shortcut.readableString)."
         refresh()
@@ -238,9 +245,17 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func resetShortcut(_ sender: NSButton) {
-        guard let action = ShortcutAction(rawValue: sender.tag),
-              setShortcut(action.defaultShortcut, for: action) else { return }
-        statusLabel.stringValue = "Shortcut reset to \(action.defaultShortcut.readableString)."
+        guard let action = ShortcutAction(rawValue: sender.tag) else { return }
+        if let defaultShortcut = action.defaultShortcut {
+            guard setShortcut(defaultShortcut, for: action) else { return }
+            statusLabel.stringValue = "Shortcut reset to \(defaultShortcut.readableString)."
+        } else {
+            preferences.pasteLowercaseShortcut = nil
+            statusLabel.stringValue = "Shortcut cleared."
+            refresh()
+            onShortcutChanged()
+            stopRecording()
+        }
     }
 
     @objc private func toggleStartOnLogin() {

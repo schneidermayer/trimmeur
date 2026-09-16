@@ -102,4 +102,62 @@ final class TrimmeurPreferencesTests: XCTestCase {
 
         XCTAssertTrue(TrimmeurPreferences(userDefaults: userDefaults).startOnLogin)
     }
+
+    func testPasteLowercaseHasNoDefaultShortcut() {
+        let preferences = TrimmeurPreferences(userDefaults: userDefaults)
+
+        XCTAssertNil(preferences.pasteLowercaseShortcut)
+    }
+
+    func testPasteLowercaseShortcutPersistsIndependently() {
+        let preferences = TrimmeurPreferences(userDefaults: userDefaults)
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+
+        preferences.pasteLowercaseShortcut = custom
+
+        let reloadedPreferences = TrimmeurPreferences(userDefaults: userDefaults)
+        XCTAssertEqual(reloadedPreferences.pasteLowercaseShortcut, custom)
+        XCTAssertEqual(reloadedPreferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
+        XCTAssertEqual(reloadedPreferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+    }
+
+    func testClearingPasteLowercaseShortcutPreservesExistingSettings() {
+        let preferences = TrimmeurPreferences(userDefaults: userDefaults)
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+        preferences.pasteTrimmedShortcut = custom
+        preferences.pasteLowercaseShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.control, .option])
+        preferences.startOnLogin = true
+
+        preferences.pasteLowercaseShortcut = nil
+
+        let reloadedPreferences = TrimmeurPreferences(userDefaults: userDefaults)
+        XCTAssertNil(reloadedPreferences.pasteLowercaseShortcut)
+        XCTAssertNil(userDefaults.object(forKey: "pasteLowercaseShortcut"))
+        XCTAssertEqual(reloadedPreferences.pasteTrimmedShortcut, custom)
+        XCTAssertEqual(reloadedPreferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+        XCTAssertTrue(reloadedPreferences.startOnLogin)
+    }
+
+    func testMalformedSavedPasteLowercaseShortcutLeavesItUnassigned() {
+        userDefaults.set(Data("invalid shortcut".utf8), forKey: "pasteLowercaseShortcut")
+        let preferences = TrimmeurPreferences(userDefaults: userDefaults)
+
+        XCTAssertNil(preferences.pasteLowercaseShortcut)
+    }
+
+    func testResettingExistingShortcutsPreservesPasteLowercaseShortcut() {
+        let preferences = TrimmeurPreferences(userDefaults: userDefaults)
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+        preferences.pasteLowercaseShortcut = custom
+        preferences.pasteTrimmedShortcut = KeyboardShortcut(keyCode: 9, modifiers: [.control, .option])
+        preferences.pasteWithoutLineBreaksShortcut = KeyboardShortcut(keyCode: 10, modifiers: [.control, .option])
+
+        preferences.resetShortcut()
+        preferences.resetPasteWithoutLineBreaksShortcut()
+
+        let reloadedPreferences = TrimmeurPreferences(userDefaults: userDefaults)
+        XCTAssertEqual(reloadedPreferences.pasteLowercaseShortcut, custom)
+        XCTAssertEqual(reloadedPreferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
+        XCTAssertEqual(reloadedPreferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+    }
 }

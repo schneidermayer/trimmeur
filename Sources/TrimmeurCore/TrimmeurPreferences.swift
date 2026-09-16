@@ -4,6 +4,7 @@ public final class TrimmeurPreferences {
     private enum Key {
         static let pasteTrimmedShortcut = "pasteTrimmedShortcut"
         static let pasteWithoutLineBreaksShortcut = "pasteWithoutLineBreaksShortcut"
+        static let pasteLowercaseShortcut = "pasteLowercaseShortcut"
         static let startOnLogin = "startOnLogin"
     }
 
@@ -53,6 +54,26 @@ public final class TrimmeurPreferences {
         }
         set {
             userDefaults.set(newValue, forKey: Key.startOnLogin)
+        }
+    }
+
+    public var pasteLowercaseShortcut: KeyboardShortcut? {
+        get {
+            guard let data = userDefaults.data(forKey: Key.pasteLowercaseShortcut) else {
+                return nil
+            }
+
+            return try? decoder.decode(KeyboardShortcut.self, from: data)
+        }
+        set {
+            guard let newValue else {
+                userDefaults.removeObject(forKey: Key.pasteLowercaseShortcut)
+                return
+            }
+
+            if let data = try? encoder.encode(newValue) {
+                userDefaults.set(data, forKey: Key.pasteLowercaseShortcut)
+            }
         }
     }
 

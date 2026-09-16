@@ -85,6 +85,33 @@ final class GlobalHotKeyTests: XCTestCase {
         XCTAssertEqual(secondCount, 1)
     }
 
+    func testThirdHotKeyRoutesIndependentlyAndCanBeCleared() throws {
+        let first = GlobalHotKey(identifier: 1)
+        let second = GlobalHotKey(identifier: 2)
+        let third = GlobalHotKey(identifier: 3)
+        defer {
+            first.unregister()
+            second.unregister()
+            third.unregister()
+        }
+        var counts = [0, 0, 0]
+        try first.register(shortcut: firstShortcut) { counts[0] += 1 }
+        try second.register(shortcut: secondShortcut) { counts[1] += 1 }
+        try third.register(shortcut: KeyboardShortcut(
+            keyCode: UInt32(kVK_F20),
+            modifiers: [.control, .option, .shift, .command]
+        )) { counts[2] += 1 }
+
+        XCTAssertEqual(try sendHotKeyEvent(identifier: 3), noErr)
+        XCTAssertEqual(counts, [0, 0, 1])
+
+        third.unregister()
+        XCTAssertEqual(try sendHotKeyEvent(identifier: 3), OSStatus(eventNotHandledErr))
+        XCTAssertEqual(try sendHotKeyEvent(identifier: 1), noErr)
+        XCTAssertEqual(try sendHotKeyEvent(identifier: 2), noErr)
+        XCTAssertEqual(counts, [1, 1, 1])
+    }
+
     // Dispatch only inside the test process; no keyboard input or clipboard access.
     private func sendHotKeyEvent(identifier: UInt32, signature: OSType? = nil) throws -> OSStatus {
         var event: EventRef?

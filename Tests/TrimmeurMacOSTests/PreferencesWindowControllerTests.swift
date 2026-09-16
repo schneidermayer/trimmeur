@@ -122,6 +122,105 @@ final class PreferencesWindowControllerTests: XCTestCase {
         XCTAssertEqual(changeCount, 1)
     }
 
+    func testPasteLowercaseDisplaysNoShortcutByDefault() throws {
+        let button = try pasteLowercaseShortcutButton()
+
+        XCTAssertNil(preferences.pasteLowercaseShortcut)
+        XCTAssertEqual(button.title, "No Shortcut")
+        XCTAssertNotNil(controller.window?.contentView?.subviews.compactMap { $0 as? NSTextField }.first {
+            $0.stringValue == "Paste Lowercase"
+        })
+    }
+
+    func testAssigningPasteLowercaseShortcutPreservesOtherShortcutsAndUpdatesButton() throws {
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+        let button = try pasteLowercaseShortcutButton()
+        button.performClick(nil)
+
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteLowercase))
+
+        XCTAssertEqual(preferences.pasteLowercaseShortcut, custom)
+        XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+        XCTAssertEqual(button.title, custom.displayString)
+        XCTAssertEqual(changeCount, 1)
+        XCTAssertEqual(recordingChanges, [true, false])
+    }
+
+    func testPasteLowercaseRejectsBothExistingShortcuts() {
+        XCTAssertFalse(controller.setShortcut(.defaultPasteTrimmed, for: .pasteLowercase))
+        XCTAssertFalse(controller.setShortcut(.defaultPasteWithoutLineBreaks, for: .pasteLowercase))
+
+        XCTAssertNil(preferences.pasteLowercaseShortcut)
+        XCTAssertEqual(changeCount, 0)
+    }
+
+    func testBothExistingActionsRejectPasteLowercaseShortcut() {
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteLowercase))
+
+        XCTAssertFalse(controller.setShortcut(custom, for: .pasteTrimmed))
+        XCTAssertFalse(controller.setShortcut(custom, for: .pasteWithoutLineBreaks))
+
+        XCTAssertEqual(preferences.pasteLowercaseShortcut, custom)
+        XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+        XCTAssertEqual(changeCount, 1)
+    }
+
+    func testResetCannotTakeShortcutAssignedToPasteLowercase() throws {
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteTrimmed))
+        XCTAssertTrue(controller.setShortcut(.defaultPasteTrimmed, for: .pasteLowercase))
+        let resetButton = try XCTUnwrap(controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
+            $0.title == "Reset" && $0.tag == PreferencesWindowController.ShortcutAction.pasteTrimmed.rawValue
+        })
+
+        resetButton.performClick(nil)
+
+        XCTAssertEqual(preferences.pasteTrimmedShortcut, custom)
+        XCTAssertEqual(preferences.pasteLowercaseShortcut, .defaultPasteTrimmed)
+        XCTAssertEqual(changeCount, 2)
+    }
+
+    func testClearingPasteLowercaseShortcutRemovesAssignmentAndResumesHotKeys() throws {
+        let custom = KeyboardShortcut(keyCode: 8, modifiers: [.control, .option])
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteLowercase))
+        let shortcutButton = try pasteLowercaseShortcutButton()
+        shortcutButton.performClick(nil)
+        let clearButton = try XCTUnwrap(controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
+            $0.title == "Clear" && $0.tag == PreferencesWindowController.ShortcutAction.pasteLowercase.rawValue
+        })
+
+        clearButton.performClick(nil)
+
+        XCTAssertNil(TrimmeurPreferences(userDefaults: userDefaults).pasteLowercaseShortcut)
+        XCTAssertEqual(preferences.pasteTrimmedShortcut, .defaultPasteTrimmed)
+        XCTAssertEqual(preferences.pasteWithoutLineBreaksShortcut, .defaultPasteWithoutLineBreaks)
+        XCTAssertEqual(shortcutButton.title, "No Shortcut")
+        XCTAssertEqual(changeCount, 2)
+        XCTAssertEqual(recordingChanges, [true, false])
+        XCTAssertTrue(controller.setShortcut(custom, for: .pasteTrimmed))
+    }
+
+    func testCancelingPasteLowercaseRecordingLeavesItUnassigned() throws {
+        let button = try pasteLowercaseShortcutButton()
+        button.performClick(nil)
+
+        controller.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+
+        XCTAssertNil(preferences.pasteLowercaseShortcut)
+        XCTAssertEqual(button.title, "No Shortcut")
+        XCTAssertEqual(recordingChanges, [true, false])
+        XCTAssertEqual(changeCount, 0)
+    }
+
+    private func pasteLowercaseShortcutButton() throws -> NSButton {
+        try XCTUnwrap(controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
+            $0.title != "Clear" && $0.tag == PreferencesWindowController.ShortcutAction.pasteLowercase.rawValue
+        })
+    }
+
     private func pasteWithoutLineBreaksShortcutButton() throws -> NSButton {
         try XCTUnwrap(controller.window?.contentView?.subviews.compactMap { $0 as? NSButton }.first {
             $0.title == preferences.pasteWithoutLineBreaksShortcut.displayString
